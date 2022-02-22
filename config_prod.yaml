@@ -1,0 +1,4 @@
+env: dev
+data_path: /mnt/nfsroot/hegang/benchmark-datas-ts
+report_path: /mnt/nfsroot/hegang/report/hyperts
+max_trials: 3
