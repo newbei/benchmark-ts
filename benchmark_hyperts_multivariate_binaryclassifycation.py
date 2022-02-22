@@ -9,15 +9,18 @@ from sktime.datatypes._panel._convert import from_2d_array_to_nested, is_nested_
 
 result_file_path, trained_data_names, mode, data_base_path, max_trials = initparams()
 
-types = ['classification-multi']
+types = ['classfication-binary']
 data_sizes = ['small', 'medium', 'large']
-metrics_target = ['accuracy', 'precision', 'recall']
-task_calc_score = 'multiclass'
-task_trail = 'univariate-multiclass'
+metrics_target = ['accuracy', 'precision', 'recall', 'roc', 'auc', 'recall', 'f1']
+task_calc_score = 'binary'
+task_trail = 'multivariate-binaryclass'
 
 
 def trail(TRAIN_APTH, TEST_PATH, Date_Col_Name, Series_Col_name, forecast_length, format, task, metric, covariables,
           max_trials):
+    if Series_Col_name == None or len(Series_Col_name) <= 1:
+        print("Didin't found Series_Col_name count > 1 , not multivariate-binaryclass")
+        return
     # load data
     df_train = pd.read_csv(TRAIN_APTH)
     df_test = pd.read_csv(TEST_PATH)
@@ -29,16 +32,31 @@ def trail(TRAIN_APTH, TEST_PATH, Date_Col_Name, Series_Col_name, forecast_length
     return metrics.calc_score(y_test, y_pred, metrics=metrics_target, task=task_calc_score), time_cost, run_kwargs
 
 
+def to_series(x):
+    try:
+        value= pd.Series([float(item) for item in x.split('|')])
+    except:
+        print('error')
+        value= pd.Series([float(item) for item in x.split('|')])
+    return value
+
+
+
 def trail_classfication(Date_Col_Name, Series_Col_name, covariables, df_test, df_train, format, metric, task,
                         max_trials):
+    df_train = df_train.copy()
+    df_test = df_test.copy()
     Y_train = pd.DataFrame(df_train['y'])
     df_train = df_train.drop(['y'], axis=1)
-    df_train = from_2d_array_to_nested(df_train)
+
+    for col in df_train.columns:
+        df_train[col] = df_train[col].map(to_series)
     df_train['y'] = Y_train
 
     Y_test = pd.DataFrame(df_test['y'])
     df_test = df_test.drop(['y'], axis=1)
-    df_test = from_2d_array_to_nested(df_test)
+    for col in df_test.columns:
+        df_test[col] = df_test[col].map(to_series)
     df_test['y'] = Y_test
 
     y_pred, time_cost, run_kwargs = hpyertstest(df_train, df_test, Date_Col_Name, format, task, covariables,
@@ -53,6 +71,7 @@ def hpyertstest(train_df, test_df, Date_Col_Name, format, task, covariables, met
     from hyperts.experiment import make_experiment
     from hyperts.utils import consts
     train_df = train_df.copy(deep=True)
+    params = {'pos_label': 1}
 
     exp = make_experiment(train_df,
                           timestamp=Date_Col_Name,
@@ -62,7 +81,7 @@ def hpyertstest(train_df, test_df, Date_Col_Name, format, task, covariables, met
                           covariables=covariables,
                           max_trials=max_trials,
                           target='y',
-                          optimize_direction='max'
+                          optimize_direction='max', **params
                           )
 
     model = exp.run()

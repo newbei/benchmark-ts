@@ -13,11 +13,14 @@ types = ['classification-multi']
 data_sizes = ['small', 'medium', 'large']
 metrics_target = ['accuracy', 'precision', 'recall']
 task_calc_score = 'multiclass'
-task_trail = 'univariate-multiclass'
+task_trail = 'multivariate-multiclass'
 
 
 def trail(TRAIN_APTH, TEST_PATH, Date_Col_Name, Series_Col_name, forecast_length, format, task, metric, covariables,
           max_trials):
+    if Series_Col_name == None or len(Series_Col_name) <= 1:
+        print("Didin't found Series_Col_name count > 1 , not multivariate-binaryclass")
+        return
     # load data
     df_train = pd.read_csv(TRAIN_APTH)
     df_test = pd.read_csv(TEST_PATH)
@@ -29,16 +32,30 @@ def trail(TRAIN_APTH, TEST_PATH, Date_Col_Name, Series_Col_name, forecast_length
     return metrics.calc_score(y_test, y_pred, metrics=metrics_target, task=task_calc_score), time_cost, run_kwargs
 
 
+def to_series(x):
+    try:
+        value = pd.Series([float(item) for item in x.split('|')])
+    except:
+        print('error')
+        value = pd.Series([float(item) for item in x.split('|')])
+    return value
+
+
 def trail_classfication(Date_Col_Name, Series_Col_name, covariables, df_test, df_train, format, metric, task,
                         max_trials):
+    df_train = df_train.copy()
+    df_test = df_test.copy()
     Y_train = pd.DataFrame(df_train['y'])
     df_train = df_train.drop(['y'], axis=1)
-    df_train = from_2d_array_to_nested(df_train)
+
+    for col in df_train.columns:
+        df_train[col] = df_train[col].map(to_series)
     df_train['y'] = Y_train
 
     Y_test = pd.DataFrame(df_test['y'])
     df_test = df_test.drop(['y'], axis=1)
-    df_test = from_2d_array_to_nested(df_test)
+    for col in df_test.columns:
+        df_test[col] = df_test[col].map(to_series)
     df_test['y'] = Y_test
 
     y_pred, time_cost, run_kwargs = hpyertstest(df_train, df_test, Date_Col_Name, format, task, covariables,

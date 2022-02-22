@@ -9,8 +9,10 @@ import pandas as pd
 
 def run(types, data_sizes, trail):
     # global type, path, f, config, metric, shape, task, run_kwargs
+    print("1 initparams")
     data_base_path, report_base_path, max_trials, mode, vers = initparams()
 
+    print("2 check for history run with the same name")
     trained_data_names = []
     if len(sys.argv) > 1:
         result_file_path = report_base_path + os.sep + sys.argv[1] + '.csv'
@@ -21,10 +23,13 @@ def run(types, data_sizes, trail):
     if os.path.exists(result_file_path):
         trained_data_names = pd.read_csv(result_file_path)['dataset'].values
 
+    print("3 start to run ------------ ")
     time_start = time.time()
     print("start", time.strftime("%Y-%m-%d %H:%M:%S"))
     for type in types:
+        print("3 type:" + type)
         for data_size in data_sizes:
+            print("4 data_size:" + data_size)
             path = data_base_path + os.sep + type + os.sep + data_size
             if os.path.exists(path):
                 list = os.listdir(path)
@@ -75,6 +80,7 @@ def run(types, data_sizes, trail):
                         except Exception:
                             traceback.print_exc()
                             print(" Error: " + train_file_path)
+                        time.sleep(1)
     time_end = time.time()
     print("end  ", time.strftime("%Y-%m-%d %H:%M:%S"))
     print("total cost", time_end - time_start)
