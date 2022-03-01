@@ -43,7 +43,8 @@ def run(types, data_sizes, trail):
                     test_file_path = path + os.sep + dir + os.sep + 'test.csv'
                     metadata_path = path + os.sep + dir + os.sep + 'metadata.yaml'
 
-                    if os.path.exists(train_file_path) and os.path.getsize(train_file_path) > 0:
+                    if (os.path.exists(train_file_path) and os.path.getsize(train_file_path))\
+                            or (os.path.exists(train_file_path[0:-4] + '.pkl') and os.path.getsize(train_file_path[0:-4] + '.pkl')) > 0:
                         print("train_file_path: ", train_file_path)
                         print("test_file_path: ", test_file_path)
                         print("metadata_path: ", metadata_path)

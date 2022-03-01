@@ -27,8 +27,10 @@ def save_metrics(dataset, metric, hypertsmetric, hypertscost, shape, data_size, 
             'metrics_scores': hypertsmetric,
             'HyperTS_duration[s]': round(hypertscost, 1),
             'run_kwargs': run_kwargs}
+    print("metric: ", metric, " merics: ", hypertsmetric)
     metrics_df = metrics_df.append(data, ignore_index=True)
     metrics_df.to_csv(result_file_path, index=False)
+    print("save result to : ", result_file_path)
 
 
 def get_param(config, key):
@@ -43,7 +45,8 @@ def initparams():
         mode = params['env']
         max_trials = params['max_trials']
     except:
-        traceback.print_exc()
+        # traceback.print_exc()
+        print("=== Load params from config.yaml ===")
         vers = hyperts.__version__
         f = open("./config.yaml", 'r', encoding='utf-8')
         config = yaml.load(f.read(), Loader=yaml.FullLoader)
@@ -55,7 +58,8 @@ def initparams():
 
     return data_base_path, report_base_path, max_trials, mode, vers
 
-def convertdf(df_train,df_test,Date_Col_Name,Series_Col_name,covariables, format):
+
+def convertdf(df_train, df_test, Date_Col_Name, Series_Col_name, covariables, format):
     if Series_Col_name != None and covariables != None:
         Series_Col_name = Series_Col_name + covariables
     df_train[Date_Col_Name] = pd.to_datetime(df_train[Date_Col_Name], format=format)
@@ -75,4 +79,32 @@ def convertdf(df_train,df_test,Date_Col_Name,Series_Col_name,covariables, format
                 continue
             df_train[col] = df_train[col].astype(float)
             df_test[col] = df_test[col].astype(float)
-    return df_train,df_test
+    return df_train, df_test
+
+
+def to_series(x):
+    try:
+        value = pd.Series([float(item) for item in x.split('|')])
+    except:
+        print('error')
+        value = pd.Series([float(item) for item in x.split('|')])
+    return value
+
+
+def convert_3d(df_train, df_test):
+    df_train = df_train.copy()
+    df_test = df_test.copy()
+    Y_train = pd.DataFrame(df_train['y'])
+    df_train = df_train.drop(['y'], axis=1)
+
+    for col in df_train.columns:
+        df_train[col] = df_train[col].map(to_series)
+    df_train['y'] = Y_train
+
+    Y_test = pd.DataFrame(df_test['y'])
+    df_test = df_test.drop(['y'], axis=1)
+    for col in df_test.columns:
+        df_test[col] = df_test[col].map(to_series)
+    df_test['y'] = Y_test
+
+    return df_train, df_test

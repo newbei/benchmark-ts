@@ -62,7 +62,9 @@ def hpyertstest(train_df, test_df, Date_Col_Name, format, task, covariables, met
                           covariables=covariables,
                           max_trials=max_trials,
                           target='y',
-                          optimize_direction='max'
+                          optimize_direction='max',
+                          verbose=1,
+                          log_level='INFO'
                           )
 
     model = exp.run()

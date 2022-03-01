@@ -20,7 +20,7 @@ try:
 except:
     traceback.print_exc()
     vers = hyperts.__version__
-    f = open("config.yaml", 'r', encoding='utf-8')
+    f = open("../config.yaml", 'r', encoding='utf-8')
     config = yaml.load(f.read(), Loader=yaml.FullLoader)
     data_base_path = config['data_path']
     report_base_path = config['report_path']

@@ -19,8 +19,19 @@ task_trail = 'univariate-binaryclass'
 def trail(TRAIN_APTH, TEST_PATH, Date_Col_Name, Series_Col_name, forecast_length, format, task, metric, covariables,
           max_trials):
     # load data
-    df_train = pd.read_csv(TRAIN_APTH)
-    df_test = pd.read_csv(TEST_PATH)
+    if Series_Col_name is not None and len(Series_Col_name) > 1:
+        print("Series_Col_name count > 1 , it is  multivariate-binaryclass")
+        return
+
+    if 'Exoplanet_Hunting' in TRAIN_APTH:
+        return
+
+    try:
+        df_train = pd.read_csv(TRAIN_APTH)
+        df_test = pd.read_csv(TEST_PATH)
+    except:
+        df_train = pd.read_pickle(TRAIN_APTH[:-4]+'.pkl')
+        df_test = pd.read_pickle(TEST_PATH[:-4]+'.pkl')
     y_test, run_kwargs, time_cost, y_pred = trail_classfication(Date_Col_Name, Series_Col_name, covariables,
                                                                 df_test, df_train, format, metric, task_trail,
                                                                 max_trials)
@@ -31,15 +42,18 @@ def trail(TRAIN_APTH, TEST_PATH, Date_Col_Name, Series_Col_name, forecast_length
 
 def trail_classfication(Date_Col_Name, Series_Col_name, covariables, df_test, df_train, format, metric, task,
                         max_trials):
-    Y_train = pd.DataFrame(df_train['y'])
-    df_train = df_train.drop(['y'], axis=1)
-    df_train = from_2d_array_to_nested(df_train)
-    df_train['y'] = Y_train
+    if not any([isinstance(v, pd.Series) for v in df_train.loc[0]]):
+        Y_train = pd.DataFrame(df_train['y'])
+        df_train = df_train.drop(['y'], axis=1)
+        df_train = from_2d_array_to_nested(df_train)
+        df_train['y'] = Y_train
 
-    Y_test = pd.DataFrame(df_test['y'])
-    df_test = df_test.drop(['y'], axis=1)
-    df_test = from_2d_array_to_nested(df_test)
-    df_test['y'] = Y_test
+        Y_test = pd.DataFrame(df_test['y'])
+        df_test = df_test.drop(['y'], axis=1)
+        df_test = from_2d_array_to_nested(df_test)
+        df_test['y'] = Y_test
+    else:
+        Y_test = pd.DataFrame(df_test['y'])
 
     y_pred, time_cost, run_kwargs = hpyertstest(df_train, df_test, Date_Col_Name, format, task, covariables,
                                                 metric, max_trials)
@@ -53,7 +67,7 @@ def hpyertstest(train_df, test_df, Date_Col_Name, format, task, covariables, met
     from hyperts.experiment import make_experiment
     from hyperts.utils import consts
     train_df = train_df.copy(deep=True)
-    params = {'pos_label': '1'}
+    params = {'pos_label': 1}
 
     exp = make_experiment(train_df,
                           timestamp=Date_Col_Name,
@@ -63,7 +77,9 @@ def hpyertstest(train_df, test_df, Date_Col_Name, format, task, covariables, met
                           covariables=covariables,
                           max_trials=max_trials,
                           target='y',
-                          optimize_direction='max', **params
+                          optimize_direction='max', **params,
+                          verbose=1,
+                          log_level='INFO'
                           )
 
     model = exp.run()

@@ -5,34 +5,47 @@ import pandas as pd
 from core.framework import run
 from hyperts.utils import metrics
 import time
+from sktime.datatypes._panel._convert import from_2d_array_to_nested, is_nested_dataframe
 
 types = ['multivariate-forecast']
-data_sizes = ['small', 'medium', 'large']
+data_sizes = ['small', 'medium']
 metrics_target = ['smape', 'mape', 'rmse', 'mae']
+task_calc_score = 'regression'
+task_trail = 'forecast'
 
 
 def trail(TRAIN_APTH, TEST_PATH, Date_Col_Name, Series_Col_name, forecast_length, format, task, metric, covariables,
           max_trials):
+    # if covariables == None:
+    #     print("no covariables!!!")
+    #     return
     # load data
+
+    # if 'Poverty_Universe' not in TRAIN_APTH:
+    #     return
+
     df_train = pd.read_csv(TRAIN_APTH)
     df_test = pd.read_csv(TEST_PATH)
-    df_test, run_kwargs, time_cost, y_pred = trail_forecast(Date_Col_Name, Series_Col_name, covariables, df_test,
-                                                            df_train, format, metric, task, max_trials)
+    y_test, run_kwargs, time_cost, y_pred = _trail(Date_Col_Name, Series_Col_name, covariables,
+                                                   df_test, df_train, format, metric, task_trail,
+                                                   max_trials)
 
     # Metrics
-    return metrics.calc_score(df_test.drop(Date_Col_Name, 1), y_pred.drop(Date_Col_Name, 1),
-                              metrics=metrics_target), time_cost, run_kwargs
+    return metrics.calc_score(y_test.drop(columns=[Date_Col_Name], axis=1),
+                              y_pred.drop(columns=[Date_Col_Name], axis=1),
+                              metrics=metrics_target, task=task_calc_score), time_cost, run_kwargs
 
 
-def trail_forecast(Date_Col_Name, Series_Col_name, covariables, df_test, df_train, format, metric, task, max_trials):
+def _trail(Date_Col_Name, Series_Col_name, covariables, df_test, df_train, format, metric, task, max_trials):
     df_train, df_test = convertdf(df_train, df_test, Date_Col_Name, Series_Col_name, covariables, format)
-
     time2_start = time.time()
     from hyperts.experiment import make_experiment
     from hyperts.utils import consts
+
     train_df = df_train.copy(deep=True)
 
     exp = make_experiment(train_df,
+                          mode='dl',
                           timestamp=Date_Col_Name,
                           task=task,
                           reward_metric=metric,
@@ -45,7 +58,8 @@ def trail_forecast(Date_Col_Name, Series_Col_name, covariables, df_test, df_trai
                           )
 
     model = exp.run()
-    y_pred = model.predict(df_test)
+    X_test, y_test = model.split_X_y(df_test.copy())
+    y_pred = model.predict(X_test)
     time2_end = time.time()
 
     return df_test, exp.run_kwargs, (time2_end - time2_start), y_pred

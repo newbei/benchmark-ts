@@ -1,24 +1,25 @@
 # Loading the package
-from util.util import save_metrics, get_param, initparams,convertdf
+from util.util import convert_3d
+from sktime.datatypes._panel._convert import from_2d_array_to_nested, is_nested_dataframe
 
 import pandas as pd
 from core.framework import run
 from hyperts.utils import metrics
 import time
-from sktime.datatypes._panel._convert import from_2d_array_to_nested, is_nested_dataframe
 
-types = ['classification-multi']
+types = ['classfication-binary']
 data_sizes = ['small', 'medium', 'large']
-metrics_target = ['accuracy', 'precision', 'recall', 'log_loss']
-task_calc_score = 'multiclass'
+metrics_target = ['accuracy', 'precision', 'recall', 'roc', 'auc', 'recall', 'f1']
+task_calc_score = 'binary'
 task_trail = 'classification'
 
 
 def trail(TRAIN_APTH, TEST_PATH, Date_Col_Name, Series_Col_name, forecast_length, format, task, metric, covariables,
           max_trials):
-    if covariables == None :
-        print("no covariables!!!")
-    # load data
+    if Series_Col_name != None and len(Series_Col_name) > 1:
+        print("It is a multivariate-multiclass data")
+        return
+
     df_train = pd.read_csv(TRAIN_APTH)
     df_test = pd.read_csv(TEST_PATH)
     y_test, run_kwargs, time_cost, y_pred = _trail(Date_Col_Name, Series_Col_name, covariables,
@@ -26,11 +27,21 @@ def trail(TRAIN_APTH, TEST_PATH, Date_Col_Name, Series_Col_name, forecast_length
                                                    max_trials)
 
     # Metrics
-    return metrics.calc_score(y_test, y_pred, metrics=metrics_target, task=task_calc_score), time_cost, run_kwargs
+    return metrics.calc_score(y_test['y'], y_pred, metrics=metrics_target, task=task_calc_score), time_cost, run_kwargs
 
 
-def _trail(Date_Col_Name, Series_Col_name, covariables, df_test, df_train, format, metric, task,max_trials):
-    df_train, df_test = convertdf(df_train, df_test, Date_Col_Name, Series_Col_name, covariables)
+def _trail(Date_Col_Name, Series_Col_name, covariables, df_test, df_train, format, metric, task, max_trials):
+
+    Y_train = pd.DataFrame(df_train['y'])
+    df_train = df_train.drop(['y'], axis=1)
+    df_train = from_2d_array_to_nested(df_train)
+    df_train['y'] = Y_train
+
+    Y_test = pd.DataFrame(df_test['y'])
+    df_test = df_test.drop(['y'], axis=1)
+    df_test = from_2d_array_to_nested(df_test)
+    df_test['y'] = Y_test
+
     time2_start = time.time()
     from hyperts.experiment import make_experiment
     from hyperts.utils import consts
@@ -39,13 +50,13 @@ def _trail(Date_Col_Name, Series_Col_name, covariables, df_test, df_train, forma
 
     exp = make_experiment(train_df,
                           mode='dl',
-                          timestamp=Date_Col_Name,
-                          task=task,
+                          task='classification',
                           reward_metric=metric,
-                          timestamp_format=format,
-                          covariables=covariables,
                           max_trials=max_trials,
-                          optimize_direction='min'
+                          optimize_direction='max',
+                          target='y',
+                          verbose=1,
+                          log_level='INFO'
                           )
 
     model = exp.run()

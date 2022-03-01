@@ -39,7 +39,9 @@ def trail_forecast(Date_Col_Name, Series_Col_name, covariables, df_test, df_trai
                           timestamp_format=format,
                           covariables=covariables,
                           max_trials=max_trials,
-                          optimize_direction='min'
+                          optimize_direction='min',
+                          verbose=1,
+                          log_level='INFO'
                           )
 
     model = exp.run()
